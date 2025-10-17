@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <style name="Theme.Cc" parent="android:Theme.Material.Light.NoActionBar" />
+    
+    <!-- 启动画面主题 -->
+    <style name="Theme.Cc.Splash" parent="Theme.Cc">
+        <item name="android:windowBackground">@drawable/splash_background</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowFullscreen">false</item>
+    </style>
+</resources>
