@@ -38,8 +38,9 @@ import com.plant.levelcodemoreplant.ui.theme.*
 @Composable
 fun SimpleLevelScreen(
     viewModel: SimpleLevelViewModel = viewModel(),
-    onNavigateToMultiPlant: () -> Unit = {},  // 导航到多植物界面
-    onNavigateToSinglePlant: () -> Unit = {}  // 导航到单植物界面
+    onNavigateToMultiPlant: () -> Unit = {},    // 导航到多植物界面
+    onNavigateToSinglePlant: () -> Unit = {},   // 导航到单植物界面
+    onNavigateToMultiCostume: () -> Unit = {}   // 导航到多装扮界面
 ) {
     Log.d("SimpleLevelScreen", "开始渲染")
     
@@ -165,6 +166,57 @@ fun SimpleLevelScreen(
                         imageVector = Icons.Default.Send,
                         contentDescription = "进入",
                         tint = AccentOrange,
+                        modifier = Modifier.size(28.dp)
+                    )
+                }
+            }
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            // 多装扮礼包按钮 - 新增
+            Card(
+                onClick = onNavigateToMultiCostume,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .shadow(6.dp, RoundedCornerShape(16.dp)),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = CostumePurple.copy(alpha = 0.15f)
+                )
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(20.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "👗",
+                            style = MaterialTheme.typography.displaySmall
+                        )
+                        Column {
+                            Text(
+                                text = "多装扮礼包",
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold,
+                                color = CostumePurple
+                            )
+                            Text(
+                                text = "12个超级装扮任意选择",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = TextSecondary
+                            )
+                        }
+                    }
+                    Icon(
+                        imageVector = Icons.Default.Send,
+                        contentDescription = "进入",
+                        tint = CostumePurple,
                         modifier = Modifier.size(28.dp)
                     )
                 }

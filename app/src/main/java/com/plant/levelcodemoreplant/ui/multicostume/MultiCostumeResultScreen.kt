@@ -1,41 +1,38 @@
-package com.plant.levelcodemoreplant.ui.multiplant
+package com.plant.levelcodemoreplant.ui.multicostume
 
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.widget.Toast
-import androidx.compose.foundation.Image
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Send
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.plant.levelcodemoreplant.ui.common.PlantImage
+import com.plant.levelcodemoreplant.ui.common.CostumeImage
 import com.plant.levelcodemoreplant.ui.theme.*
 
 /**
- * 结果展示界面
+ * 装扮礼包结果展示界面
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MultiPlantResultScreen(
-    uiState: MultiPlantUiState,
+fun MultiCostumeResultScreen(
+    uiState: MultiCostumeUiState,
     onBack: () -> Unit,
-    onBackToModeSelection: () -> Unit
+    onReset: () -> Unit
 ) {
-    val mode = uiState.currentMode ?: return
     val context = LocalContext.current
     
     Scaffold(
@@ -57,7 +54,7 @@ fun MultiPlantResultScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = AccentGreen,
+                    containerColor = CostumePurple,  // 紫色主题
                     titleContentColor = Color.White
                 )
             )
@@ -72,11 +69,11 @@ fun MultiPlantResultScreen(
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // 成功提示卡片
+            // 成功提示卡片（紫色主题）
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
-                    containerColor = AccentGreen.copy(alpha = 0.1f)
+                    containerColor = CostumePurple.copy(alpha = 0.1f)
                 ),
                 shape = RoundedCornerShape(12.dp)
             ) {
@@ -88,67 +85,63 @@ fun MultiPlantResultScreen(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Text(
-                        text = "✅",
+                        text = "👗",
                         style = MaterialTheme.typography.displayLarge
                     )
                     Text(
-                        text = "礼包码生成成功！",
+                        text = "装扮礼包码生成成功！",
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
-                        color = AccentGreen
+                        color = CostumePurple
                     )
                     Text(
-                        text = "模式：${mode.displayName}",
+                        text = "已选择 ${uiState.selectedCostumes.size} 个超级装扮",
                         style = MaterialTheme.typography.bodyMedium,
                         color = TextSecondary
                     )
                 }
             }
             
-            // 已选植物列表
+            // 选中的装扮列表
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
-                    containerColor = CardBackground
+                    containerColor = Color.White
                 ),
                 shape = RoundedCornerShape(12.dp)
             ) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(16.dp)
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Text(
-                        text = "✨ 已选植物",
+                        text = "✨ 选中的装扮:",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        color = PrimaryBlue
+                        color = TextPrimary
                     )
                     
-                    Spacer(modifier = Modifier.height(12.dp))
-                    
-                    // 植物列表
-                    uiState.selectedPlants.forEachIndexed { index, plant ->
+                    uiState.selectedCostumes.forEachIndexed { index, costume ->
                         Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 4.dp),
+                            modifier = Modifier.fillMaxWidth(),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
                                 text = "${index + 1}. ",
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = PrimaryBlue,
+                                color = CostumePurple,
                                 fontWeight = FontWeight.Bold
                             )
-                            PlantImage(
-                                plantId = plant.id,
-                                emoji = plant.emoji,
+                            CostumeImage(
+                                costumeId = costume.id,
+                                emoji = costume.emoji,
                                 modifier = Modifier.size(24.dp)
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = plant.name,
+                                text = costume.name,
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = TextPrimary
                             )
@@ -157,104 +150,109 @@ fun MultiPlantResultScreen(
                 }
             }
             
-            // 兑换码展示
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = CardBackground
-                ),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp)
+            // 礼包码卡片
+            uiState.generatedCode?.let { code ->
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = Color.White
+                    ),
+                    shape = RoundedCornerShape(12.dp)
                 ) {
-                    Text(
-                        text = "🎁 兑换码",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = PrimaryBlue
-                    )
-                    
-                    Spacer(modifier = Modifier.height(12.dp))
-                    
-                    // 兑换码内容
-                    Surface(
-                        shape = RoundedCornerShape(12.dp),
-                        color = SurfaceLight,
-                        modifier = Modifier.fillMaxWidth()
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         Text(
-                            text = uiState.generatedCode ?: "",
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp),
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                            text = "🎁 装扮礼包码:",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
                             color = TextPrimary
                         )
+                        
+                        // 礼包码内容
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(8.dp),
+                            color = BackgroundLight
+                        ) {
+                            Text(
+                                text = code,
+                                modifier = Modifier.padding(12.dp),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = TextSecondary
+                            )
+                        }
+                        
+                        // 复制按钮
+                        Button(
+                            onClick = {
+                                copyToClipboard(context, code)
+                                Toast.makeText(context, "礼包码已复制到剪贴板", Toast.LENGTH_SHORT).show()
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = CostumePurple
+                            ),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Refresh,
+                                contentDescription = "复制"
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("📋 复制礼包码")
+                        }
                     }
                 }
             }
             
-            // 操作按钮
+            // 底部操作按钮
             Column(
+                modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                // 复制按钮
-                Button(
-                    onClick = {
-                        uiState.generatedCode?.let { code ->
-                            copyToClipboard(context, code)
-                        }
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(56.dp),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = AccentGreen
-                    )
+                // 继续生成
+                OutlinedButton(
+                    onClick = onBack,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = CostumePurple
+                    ),
+                    border = BorderStroke(2.dp, CostumePurple),
+                    shape = RoundedCornerShape(12.dp)
                 ) {
-                    Icon(
-                        Icons.Default.Send,
-                        contentDescription = "复制",
-                        modifier = Modifier.size(24.dp)
-                    )
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Text(
-                        text = "📋 复制兑换码",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
+                    Text("⬅️ 返回修改装扮")
                 }
                 
-                // 重新选择按钮
+                // 重新开始
                 OutlinedButton(
-                    onClick = onBackToModeSelection,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(50.dp),
-                    shape = RoundedCornerShape(16.dp),
+                    onClick = onReset,
+                    modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = PrimaryBlue
-                    )
+                        contentColor = TextSecondary
+                    ),
+                    shape = RoundedCornerShape(12.dp)
                 ) {
-                    Text(
-                        text = "🔄 重新选择",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Medium
+                    Icon(
+                        imageVector = Icons.Default.Refresh,
+                        contentDescription = "重新开始"
                     )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("🔄 重新开始")
                 }
             }
         }
     }
 }
 
+/**
+ * 复制到剪贴板
+ */
 private fun copyToClipboard(context: Context, text: String) {
     val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-    val clip = ClipData.newPlainText("礼包兑换码", text)
+    val clip = ClipData.newPlainText("礼包码", text)
     clipboard.setPrimaryClip(clip)
-    Toast.makeText(context, "✅ 已复制到剪贴板！", Toast.LENGTH_SHORT).show()
 }

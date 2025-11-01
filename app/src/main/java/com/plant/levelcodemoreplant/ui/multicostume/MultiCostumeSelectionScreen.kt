@@ -1,4 +1,4 @@
-package com.plant.levelcodemoreplant.ui.multiplant
+package com.plant.levelcodemoreplant.ui.multicostume
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
@@ -18,7 +18,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -27,24 +26,25 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.plant.levelcodemoreplant.ui.common.PlantImage
+import com.plant.levelcodemoreplant.data.model.CostumePools
+import com.plant.levelcodemoreplant.ui.common.CostumeImage
 import com.plant.levelcodemoreplant.ui.theme.*
 
 /**
- * 植物选择界面（宫格+底栏）
+ * 装扮选择界面（12选任意）
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MultiPlantSelectionScreen(
-    uiState: MultiPlantUiState,
+fun MultiCostumeSelectionScreen(
+    uiState: MultiCostumeUiState,
     onBack: () -> Unit,
-    onPlantClick: (String) -> Unit,
+    onCostumeClick: (String) -> Unit,
     onGenerate: () -> Unit,
     onErrorDismiss: () -> Unit
 ) {
-    val mode = uiState.currentMode ?: return
-    val selectedCount = uiState.selectedPlants.size
-    val canGenerate = selectedCount == mode.selectCount
+    val mode = CostumePools.MODE
+    val selectedCount = uiState.selectedCostumes.size
+    val canGenerate = selectedCount >= mode.minSelect && selectedCount <= mode.maxSelect
     
     Scaffold(
         topBar = {
@@ -52,8 +52,13 @@ fun MultiPlantSelectionScreen(
                 title = {
                     Column {
                         Text(
-                            text = mode.displayName,
+                            text = "👗 ${mode.displayName}",
                             fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = "12个超级装扮任意选择",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color.White.copy(alpha = 0.9f)
                         )
                     }
                 },
@@ -67,17 +72,17 @@ fun MultiPlantSelectionScreen(
                     }
                 },
                 actions = {
-                    // 进度指示
+                    // 进度指示（紫色主题）
                     Surface(
                         shape = RoundedCornerShape(20.dp),
                         color = when {
                             canGenerate -> AccentGreen
-                            selectedCount > 0 -> AccentOrange
+                            selectedCount > 0 -> CostumePurpleLight
                             else -> Color.White.copy(alpha = 0.3f)
                         }
                     ) {
                         Text(
-                            text = "$selectedCount/${mode.selectCount}",
+                            text = "$selectedCount/12",
                             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                             color = Color.White,
                             fontWeight = FontWeight.Bold,
@@ -87,19 +92,19 @@ fun MultiPlantSelectionScreen(
                     Spacer(modifier = Modifier.width(16.dp))
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = PrimaryBlue,
+                    containerColor = CostumePurple,  // 紫色主题
                     titleContentColor = Color.White
                 )
             )
         },
         bottomBar = {
-            // 底部栏：已选植物 + 生成按钮
-            BottomBar(
-                selectedPlants = uiState.selectedPlants,
+            // 底部栏：已选装扮 + 生成按钮
+            CostumeBottomBar(
+                selectedCostumes = uiState.selectedCostumes,
                 mode = mode,
                 canGenerate = canGenerate,
                 isGenerating = uiState.isGenerating,
-                onPlantRemove = onPlantClick,
+                onCostumeRemove = onCostumeClick,
                 onGenerate = onGenerate
             )
         },
@@ -110,18 +115,18 @@ fun MultiPlantSelectionScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            // 植物宫格
+            // 装扮宫格
             LazyVerticalGrid(
-                columns = GridCells.Fixed(4),  // 4列宫格
+                columns = GridCells.Fixed(3),  // 3列宫格
                 contentPadding = PaddingValues(16.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
                 modifier = Modifier.weight(1f)
             ) {
-                items(uiState.availablePlants) { plant ->
-                    PlantGridItem(
-                        plant = plant,
-                        onClick = { onPlantClick(plant.id) }
+                items(uiState.availableCostumes) { costume ->
+                    CostumeGridItem(
+                        costume = costume,
+                        onClick = { onCostumeClick(costume.id) }
                     )
                 }
             }
@@ -136,7 +141,7 @@ fun MultiPlantSelectionScreen(
             text = { Text(error) },
             confirmButton = {
                 TextButton(onClick = onErrorDismiss) {
-                    Text("确定")
+                    Text("确定", color = CostumePurple)
                 }
             }
         )
@@ -144,31 +149,31 @@ fun MultiPlantSelectionScreen(
 }
 
 /**
- * 植物宫格项
+ * 装扮宫格项（紫色主题）
  */
 @Composable
-fun PlantGridItem(
-    plant: SelectablePlant,
+fun CostumeGridItem(
+    costume: SelectableCostume,
     onClick: () -> Unit
 ) {
     Card(
         onClick = onClick,
         modifier = Modifier
             .fillMaxWidth()
-            .aspectRatio(1f),  // 正方形
+            .aspectRatio(0.85f),  // 稍微高一点，适合装扮图片
         shape = RoundedCornerShape(12.dp),
         elevation = CardDefaults.cardElevation(
-            defaultElevation = if (plant.isSelected) 8.dp else 2.dp
+            defaultElevation = if (costume.isSelected) 8.dp else 2.dp
         ),
         colors = CardDefaults.cardColors(
-            containerColor = if (plant.isSelected) 
-                PrimaryBlue.copy(alpha = 0.15f) 
+            containerColor = if (costume.isSelected) 
+                CostumePurple.copy(alpha = 0.15f)  // 紫色选中背景
             else 
                 Color.White
         ),
         border = BorderStroke(
-            width = if (plant.isSelected) 3.dp else 1.dp,
-            color = if (plant.isSelected) PrimaryBlue else Color.LightGray
+            width = if (costume.isSelected) 3.dp else 1.dp,
+            color = if (costume.isSelected) CostumePurple else Color.LightGray
         )
     ) {
         Box(
@@ -180,23 +185,23 @@ fun PlantGridItem(
                 verticalArrangement = Arrangement.Center,
                 modifier = Modifier.padding(8.dp)
             ) {
-                // 植物图片
-                PlantImage(
-                    plantId = plant.id,
-                    emoji = plant.emoji,
+                // 装扮图片
+                CostumeImage(
+                    costumeId = costume.id,
+                    emoji = costume.emoji,
                     modifier = Modifier
-                        .size(64.dp)
+                        .size(80.dp)
                         .padding(4.dp)
                 )
                 
                 Spacer(modifier = Modifier.height(4.dp))
                 
-                // 植物名称
+                // 装扮名称
                 Text(
-                    text = plant.name,
+                    text = costume.name,
                     style = MaterialTheme.typography.bodySmall,
-                    fontWeight = if (plant.isSelected) FontWeight.Bold else FontWeight.Normal,
-                    color = if (plant.isSelected) PrimaryBlue else TextPrimary,
+                    fontWeight = if (costume.isSelected) FontWeight.Bold else FontWeight.Normal,
+                    color = if (costume.isSelected) CostumePurple else TextPrimary,
                     textAlign = TextAlign.Center,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
@@ -204,15 +209,15 @@ fun PlantGridItem(
             }
             
             // 选中标记
-            if (plant.isSelected) {
+            if (costume.isSelected) {
                 Icon(
                     imageVector = Icons.Default.CheckCircle,
                     contentDescription = "已选中",
-                    tint = AccentGreen,
+                    tint = CostumePurple,  // 紫色勾
                     modifier = Modifier
                         .align(Alignment.TopEnd)
                         .padding(4.dp)
-                        .size(20.dp)
+                        .size(24.dp)
                 )
             }
         }
@@ -220,15 +225,15 @@ fun PlantGridItem(
 }
 
 /**
- * 底部栏
+ * 底部栏（紫色主题）
  */
 @Composable
-fun BottomBar(
-    selectedPlants: List<SelectablePlant>,
-    mode: com.plant.levelcodemoreplant.data.model.MultiPlantMode,
+fun CostumeBottomBar(
+    selectedCostumes: List<SelectableCostume>,
+    mode: com.plant.levelcodemoreplant.data.model.MultiCostumeMode,
     canGenerate: Boolean,
     isGenerating: Boolean,
-    onPlantRemove: (String) -> Unit,
+    onCostumeRemove: (String) -> Unit,
     onGenerate: () -> Unit
 ) {
     Surface(
@@ -239,10 +244,10 @@ fun BottomBar(
         Column(
             modifier = Modifier.padding(16.dp)
         ) {
-            // 已选植物列表（横向滚动）
-            if (selectedPlants.isNotEmpty()) {
+            // 已选装扮列表（横向滚动）
+            if (selectedCostumes.isNotEmpty()) {
                 Text(
-                    text = "已选择 (${selectedPlants.size}/${mode.selectCount}):",
+                    text = "已选装扮 (${selectedCostumes.size}/12):",
                     style = MaterialTheme.typography.titleSmall,
                     color = TextSecondary,
                     modifier = Modifier.padding(bottom = 8.dp)
@@ -252,10 +257,10 @@ fun BottomBar(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     modifier = Modifier.padding(bottom = 12.dp)
                 ) {
-                    items(selectedPlants) { plant ->
-                        SelectedPlantChip(
-                            plant = plant,
-                            onRemove = { onPlantRemove(plant.id) }
+                    items(selectedCostumes) { costume ->
+                        SelectedCostumeChip(
+                            costume = costume,
+                            onRemove = { onCostumeRemove(costume.id) }
                         )
                     }
                 }
@@ -264,18 +269,26 @@ fun BottomBar(
             // 提示信息
             if (!canGenerate) {
                 Text(
-                    text = if (selectedPlants.size < mode.selectCount) {
-                        "还需选择 ${mode.selectCount - selectedPlants.size} 个植物"
+                    text = if (selectedCostumes.isEmpty()) {
+                        "💡 请至少选择 1 个装扮，最多可选 12 个"
                     } else {
-                        "超出限制，请取消 ${selectedPlants.size - mode.selectCount} 个"
+                        "✅ 已选择 ${selectedCostumes.size} 个，可以继续选择或生成"
                     },
                     style = MaterialTheme.typography.bodySmall,
-                    color = if (selectedPlants.size < mode.selectCount) TextHint else MaterialTheme.colorScheme.error,
+                    color = if (selectedCostumes.isEmpty()) TextHint else CostumePurple,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+            } else {
+                Text(
+                    text = "✨ 已选择 ${selectedCostumes.size} 个装扮，可以生成礼包码了！",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = AccentGreen,
+                    fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(bottom = 8.dp)
                 )
             }
             
-            // 生成按钮
+            // 生成按钮（紫色主题）
             Button(
                 onClick = onGenerate,
                 enabled = canGenerate && !isGenerating,
@@ -284,7 +297,7 @@ fun BottomBar(
                     .height(56.dp),
                 shape = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = AccentGreen,
+                    containerColor = CostumePurple,  // 紫色按钮
                     disabledContainerColor = Color.LightGray
                 )
             ) {
@@ -298,7 +311,7 @@ fun BottomBar(
                     Text("生成中...")
                 } else {
                     Text(
-                        text = "🎁 生成礼包码",
+                        text = "👗 生成装扮礼包码",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
@@ -309,32 +322,32 @@ fun BottomBar(
 }
 
 /**
- * 已选植物芯片
+ * 已选装扮芯片（紫色主题）
  */
 @Composable
-fun SelectedPlantChip(
-    plant: SelectablePlant,
+fun SelectedCostumeChip(
+    costume: SelectableCostume,
     onRemove: () -> Unit
 ) {
     Surface(
         shape = RoundedCornerShape(20.dp),
-        color = PrimaryBlue.copy(alpha = 0.15f),
-        border = BorderStroke(1.dp, PrimaryBlue)
+        color = CostumePurple.copy(alpha = 0.15f),  // 紫色背景
+        border = BorderStroke(1.dp, CostumePurple)
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            PlantImage(
-                plantId = plant.id,
-                emoji = plant.emoji,
+            CostumeImage(
+                costumeId = costume.id,
+                emoji = costume.emoji,
                 modifier = Modifier.size(24.dp)
             )
             Text(
-                text = plant.name,
-                style = MaterialTheme.typography.bodyMedium,
-                color = PrimaryBlue,
+                text = costume.name,
+                style = MaterialTheme.typography.bodySmall,
+                color = CostumePurple,
                 fontWeight = FontWeight.Medium,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
@@ -342,7 +355,7 @@ fun SelectedPlantChip(
             Icon(
                 imageVector = Icons.Default.Close,
                 contentDescription = "移除",
-                tint = PrimaryBlue,
+                tint = CostumePurple,
                 modifier = Modifier
                     .size(18.dp)
                     .clickable(onClick = onRemove)

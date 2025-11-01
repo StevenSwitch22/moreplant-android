@@ -8,6 +8,11 @@ val PrimaryPurple = Color(0xFF7B68EE)
 val PrimaryLight = Color(0xFF6FA8DC)
 val PrimaryDark = Color(0xFF2E5090)
 
+// 装扮主题色 - 紫色系
+val CostumePurple = Color(0xFF9C27B0)         // 主紫色
+val CostumePurpleLight = Color(0xFFBA68C8)    // 浅紫色
+val CostumePurpleDark = Color(0xFF7B1FA2)     // 深紫色
+
 // 背景色
 val BackgroundLight = Color(0xFFF5F7FA)
 val BackgroundWhite = Color(0xFFFFFFFF)

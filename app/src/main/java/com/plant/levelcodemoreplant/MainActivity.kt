@@ -12,6 +12,7 @@ import androidx.compose.runtime.*
 import com.plant.levelcodemoreplant.ui.auth.AuthState
 import com.plant.levelcodemoreplant.ui.auth.AuthViewModel
 import com.plant.levelcodemoreplant.ui.auth.LoginScreen
+import com.plant.levelcodemoreplant.ui.multicostume.MultiCostumeMainScreen
 import com.plant.levelcodemoreplant.ui.multiplant.MultiPlantMainScreen
 import com.plant.levelcodemoreplant.ui.plantsearch.SimpleLevelScreen
 import com.plant.levelcodemoreplant.ui.plantsearch.SinglePlantGeneratorScreen
@@ -50,6 +51,7 @@ fun MainScreen(authViewModel: AuthViewModel) {
     var showSplash by remember { mutableStateOf(true) }
     var showMultiPlant by remember { mutableStateOf(false) }
     var showSinglePlant by remember { mutableStateOf(false) }
+    var showMultiCostume by remember { mutableStateOf(false) }
     val authState by authViewModel.authState.collectAsState()
     
     if (showSplash) {
@@ -73,10 +75,16 @@ fun MainScreen(authViewModel: AuthViewModel) {
                             onBack = { showSinglePlant = false }
                         )
                     }
+                    showMultiCostume -> {
+                        MultiCostumeMainScreen(
+                            onBack = { showMultiCostume = false }
+                        )
+                    }
                     else -> {
                         SimpleLevelScreen(
                             onNavigateToMultiPlant = { showMultiPlant = true },
-                            onNavigateToSinglePlant = { showSinglePlant = true }
+                            onNavigateToSinglePlant = { showSinglePlant = true },
+                            onNavigateToMultiCostume = { showMultiCostume = true }
                         )
                     }
                 }
