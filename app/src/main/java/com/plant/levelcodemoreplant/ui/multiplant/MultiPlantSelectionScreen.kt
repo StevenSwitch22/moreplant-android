@@ -1,6 +1,7 @@
 package com.plant.levelcodemoreplant.ui.multiplant
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
@@ -19,6 +20,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -175,10 +179,13 @@ fun PlantGridItem(
                 verticalArrangement = Arrangement.Center,
                 modifier = Modifier.padding(8.dp)
             ) {
-                // 植物emoji
-                Text(
-                    text = plant.emoji,
-                    style = MaterialTheme.typography.displayMedium
+                // 植物图片
+                PlantImage(
+                    plantId = plant.id,
+                    emoji = plant.emoji,
+                    modifier = Modifier
+                        .size(64.dp)
+                        .padding(4.dp)
                 )
                 
                 Spacer(modifier = Modifier.height(4.dp))
@@ -318,9 +325,10 @@ fun SelectedPlantChip(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            Text(
-                text = plant.emoji,
-                style = MaterialTheme.typography.bodyMedium
+            PlantImage(
+                plantId = plant.id,
+                emoji = plant.emoji,
+                modifier = Modifier.size(24.dp)
             )
             Text(
                 text = plant.name,
@@ -337,6 +345,50 @@ fun SelectedPlantChip(
                 modifier = Modifier
                     .size(18.dp)
                     .clickable(onClick = onRemove)
+            )
+        }
+    }
+}
+
+/**
+ * 植物图片组件 - 优先显示图片，无图片时显示emoji
+ * 
+ * @param plantId 植物ID（如"200134"），用于查找对应的图片资源
+ * @param emoji 备用emoji，当没有找到图片资源时显示
+ * @param modifier 控制显示大小和样式
+ */
+@Composable
+fun PlantImage(
+    plantId: String,
+    emoji: String,
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current
+    // 动态查找图片资源（例如：plantId="200134" -> R.drawable.plant_200134）
+    val resourceName = "plant_$plantId"
+    val resourceId = context.resources.getIdentifier(
+        resourceName,      // 资源名称：plant_200134
+        "drawable",        // 资源类型
+        context.packageName // 包名
+    )
+    
+    if (resourceId != 0) {
+        // 找到图片资源，显示图片
+        Image(
+            painter = painterResource(id = resourceId),
+            contentDescription = "植物图片",
+            modifier = modifier,
+            contentScale = ContentScale.Fit  // 保持比例，适应容器大小
+        )
+    } else {
+        // 未找到图片资源，显示emoji占位符
+        Box(
+            modifier = modifier,
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = emoji,
+                style = MaterialTheme.typography.headlineMedium
             )
         }
     }
