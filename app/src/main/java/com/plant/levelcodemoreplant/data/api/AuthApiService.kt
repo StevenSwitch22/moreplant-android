@@ -19,10 +19,7 @@ interface AuthApiService {
     ): LicenseResponse
     
     companion object {
-        // TODO: 后端部署后，替换为实际的服务器地址
-        // 本地测试: http://10.0.2.2:3000/ (Android 模拟器访问本机)
-        // 本地测试: http://192.168.x.x:3000/ (真机访问局域网)
-        // 云服务器: http://your-server.com/
-        const val BASE_URL = "http://104.208.113.142:3000/"
+        // 服务器地址
+        const val BASE_URL = "http://106.54.228.106:3000/"
     }
 }

@@ -2,7 +2,11 @@ package com.plant.levelcodemoreplant.data.datasource
 
 import android.content.Context
 import android.util.Log
+import com.plant.levelcodemoreplant.data.api.RetrofitClient
+import com.plant.levelcodemoreplant.data.local.PrefsManager
 import com.plant.levelcodemoreplant.data.model.PlantPools
+import com.plant.levelcodemoreplant.data.model.SearchRequest
+import com.plant.levelcodemoreplant.utils.DeviceUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
@@ -11,6 +15,9 @@ import org.json.JSONObject
  * 多植物礼包码数据源
  */
 class MultiPlantDataSource(private val context: Context) {
+    
+    private val searchApiService = RetrofitClient.searchApiService
+    private val prefsManager = PrefsManager(context)
     
     // 编号 -> 名称映射（懒加载）
     private var plantNameMap: Map<String, String>? = null
@@ -159,7 +166,7 @@ class MultiPlantDataSource(private val context: Context) {
     }
     
     /**
-     * 查询礼包码
+     * 查询礼包码（从服务器）
      * @param modeId 模式ID
      * @param selectedPlantIds 用户选择的植物ID列表
      * @return 礼包码JSON对象，如果未找到返回null
@@ -183,27 +190,56 @@ class MultiPlantDataSource(private val context: Context) {
             // 3. 将索引转换回ID（按原始植物池顺序）
             val sortedIds = selectedIndices.map { plantPool[it] }
             
-            // 4. 生成查询键
-            val queryKey = sortedIds.joinToString(" ")
+            // 4. 生成查询键（用空格连接植物编号）
+            val keyword = sortedIds.joinToString(" ")
             
-            Log.d(TAG, "查询键: $queryKey")
+            Log.d(TAG, "查询关键词: $keyword")
             
-            // 5. 确保数据已加载
-            val codes = codeCacheMap[modeId] ?: loadMultiPlantCodes(modeId)
-            
-            // 6. 查找
-            val result = codes[queryKey]
-            
-            if (result != null) {
-                Log.d(TAG, "查询成功！")
-                Result.success(result)
-            } else {
-                Log.w(TAG, "未找到该植物组合的礼包码")
-                Result.failure(Exception("未找到该植物组合的礼包码"))
+            // 5. 获取卡密和设备ID
+            val licenseKey = prefsManager.getLicenseKey()
+            if (licenseKey.isNullOrEmpty()) {
+                return@withContext Result.failure(Exception("未找到激活信息，请重新激活"))
             }
+            
+            val deviceId = DeviceUtils.getDeviceId(context)
+            
+            // 6. 构造请求
+            val request = SearchRequest(
+                keyword = keyword,
+                license_key = licenseKey,
+                device_id = deviceId
+            )
+            
+            Log.d(TAG, "请求参数: keyword=$keyword, license_key=$licenseKey, device_id=$deviceId")
+            
+            // 7. 调用API
+            val response = searchApiService.searchCode(request)
+            
+            if (response.success && response.data != null) {
+                // 将 encrypted_data 转换为 JSON 对象
+                val encryptedData = response.data.encrypted_data
+                val jsonObject = JSONObject().apply {
+                    put("i", encryptedData.i)
+                    put("r", encryptedData.r)
+                    put("e", encryptedData.e)
+                }
+                
+                Log.d(TAG, "查询成功！")
+                Result.success(jsonObject)
+            } else {
+                val errorMsg = response.message ?: "未找到该植物组合的礼包码"
+                Log.w(TAG, "查询失败: $errorMsg")
+                Result.failure(Exception(errorMsg))
+            }
+        } catch (e: java.net.SocketTimeoutException) {
+            Log.e(TAG, "请求超时", e)
+            Result.failure(Exception("请求超时，请检查网络连接后重试"))
+        } catch (e: java.net.UnknownHostException) {
+            Log.e(TAG, "网络连接失败", e)
+            Result.failure(Exception("网络连接失败，请检查网络设置"))
         } catch (e: Exception) {
             Log.e(TAG, "查询礼包码失败", e)
-            Result.failure(e)
+            Result.failure(Exception("查询失败: ${e.message}"))
         }
     }
     

@@ -2,7 +2,11 @@ package com.plant.levelcodemoreplant.data.datasource
 
 import android.app.Application
 import android.util.Log
+import com.plant.levelcodemoreplant.data.api.RetrofitClient
+import com.plant.levelcodemoreplant.data.local.PrefsManager
 import com.plant.levelcodemoreplant.data.model.CostumePools
+import com.plant.levelcodemoreplant.data.model.SearchRequest
+import com.plant.levelcodemoreplant.utils.DeviceUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
@@ -11,6 +15,9 @@ import org.json.JSONObject
  * 多装扮数据源
  */
 class MultiCostumeDataSource(private val application: Application) {
+    
+    private val searchApiService = RetrofitClient.searchApiService
+    private val prefsManager = PrefsManager(application)
     
     companion object {
         private const val TAG = "MultiCostumeDataSource"
@@ -49,7 +56,7 @@ class MultiCostumeDataSource(private val application: Application) {
     }
     
     /**
-     * 生成礼包码
+     * 生成礼包码（从服务器查询）
      * @param selectedCostumeIds 选中的装扮ID列表
      * @return 生成的礼包码JSON字符串
      */
@@ -57,32 +64,53 @@ class MultiCostumeDataSource(private val application: Application) {
         try {
             Log.d(TAG, "生成礼包码，选中装扮: $selectedCostumeIds")
             
-            // 构造查找key：装扮ID用空格分隔
-            val key = selectedCostumeIds.joinToString(" ")
-            Log.d(TAG, "查找key: $key")
+            // 构造查询关键词：装扮ID用空格分隔
+            val keyword = selectedCostumeIds.joinToString(" ")
+            Log.d(TAG, "查询关键词: $keyword")
             
-            // 从缓存中查找
-            val codeData = costumeCodeCache[key]
-            if (codeData != null) {
-                Log.d(TAG, "找到礼包码")
-                return@withContext codeData
+            // 获取卡密和设备ID
+            val licenseKey = prefsManager.getLicenseKey()
+            if (licenseKey.isNullOrEmpty()) {
+                throw Exception("未找到激活信息，请重新激活")
             }
             
-            // 缓存未命中，直接读取文件
-            val fileName = CostumePools.MODE.fileName
-            val content = application.assets.open(fileName).bufferedReader().use { it.readText() }
-            val jsonObject = JSONObject(content)
+            val deviceId = DeviceUtils.getDeviceId(application)
             
-            if (jsonObject.has(key)) {
-                val result = jsonObject.getJSONObject(key).toString()
-                costumeCodeCache[key] = result
-                Log.d(TAG, "从文件读取礼包码成功")
+            // 构造请求
+            val request = SearchRequest(
+                keyword = keyword,
+                license_key = licenseKey,
+                device_id = deviceId
+            )
+            
+            Log.d(TAG, "请求参数: keyword=$keyword, license_key=$licenseKey, device_id=$deviceId")
+            
+            // 调用API
+            val response = searchApiService.searchCode(request)
+            
+            if (response.success && response.data != null) {
+                // 将 encrypted_data 转换为 JSON 字符串
+                val encryptedData = response.data.encrypted_data
+                val jsonObject = JSONObject().apply {
+                    put("i", encryptedData.i)
+                    put("r", encryptedData.r)
+                    put("e", encryptedData.e)
+                }
+                val result = jsonObject.toString()
+                
+                Log.d(TAG, "查询成功")
                 return@withContext result
+            } else {
+                val errorMsg = response.message ?: "未找到对应的装扮组合"
+                Log.e(TAG, "查询失败: $errorMsg")
+                throw Exception(errorMsg)
             }
-            
-            Log.e(TAG, "未找到对应的礼包码，key: $key")
-            throw Exception("未找到对应的装扮组合")
-            
+        } catch (e: java.net.SocketTimeoutException) {
+            Log.e(TAG, "请求超时", e)
+            throw Exception("请求超时，请检查网络连接后重试")
+        } catch (e: java.net.UnknownHostException) {
+            Log.e(TAG, "网络连接失败", e)
+            throw Exception("网络连接失败，请检查网络设置")
         } catch (e: Exception) {
             Log.e(TAG, "生成礼包码失败", e)
             throw e

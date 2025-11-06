@@ -60,20 +60,28 @@ class SimpleLevelViewModel(application: Application) : AndroidViewModel(applicat
         searchJob = viewModelScope.launch {
             delay(300)
             
-            val levels = cachedLevels ?: emptyList()
-            val results = levels.filter { it.name.contains(query, ignoreCase = true) }
+            // 调用接口获取模糊搜索建议
+            val result = dataSource.getSuggestions(query)
             
-            // 转换为植物项
-            val plantItems = results.map { level ->
-                PlantItem(
-                    id = level.name,  // 使用名称作为ID
-                    name = level.name,
-                    jsonCode = level.jsonCode
-                )
+            result.onSuccess { suggestions ->
+                // 转换为植物项（此时还没有兑换码）
+                val plantItems = suggestions.map { name ->
+                    PlantItem(
+                        id = name,  // 使用名称作为ID
+                        name = name,
+                        jsonCode = ""  // 暂时为空，点击生成时再查询
+                    )
+                }
+                
+                Log.d(TAG, "搜索 '$query'，找到 ${plantItems.size} 个结果")
+                _uiState.update { it.copy(plantItems = plantItems) }
+            }.onFailure { e ->
+                Log.e(TAG, "搜索失败", e)
+                _uiState.update { it.copy(
+                    plantItems = emptyList(),
+                    errorMessage = e.message
+                ) }
             }
-            
-            Log.d(TAG, "搜索 '$query'，找到 ${plantItems.size} 个结果")
-            _uiState.update { it.copy(plantItems = plantItems) }
         }
     }
     
@@ -83,7 +91,7 @@ class SimpleLevelViewModel(application: Application) : AndroidViewModel(applicat
     }
     
     /**
-     * 生成兑换码（模拟生成过程）
+     * 生成兑换码（从服务器查询）
      */
     fun generateCode(plantId: String) {
         viewModelScope.launch {
@@ -97,25 +105,56 @@ class SimpleLevelViewModel(application: Application) : AndroidViewModel(applicat
                 state.copy(plantItems = updatedItems)
             }
             
-            // 模拟生成过程（1-2秒）
-            val loadingTime = (1000L..2000L).random()
-            delay(loadingTime)
-            
-            // 生成完成，展开显示
-            _uiState.update { state ->
-                val updatedItems = state.plantItems.map { item ->
-                    if (item.id == plantId) {
-                        item.copy(
-                            isGenerating = false, 
-                            isGenerated = true,
-                            isExpanded = true
+            try {
+                // 从服务器查询兑换码
+                val result = dataSource.searchCodeFromServer(plantId)
+                
+                result.onSuccess { jsonCode ->
+                    // 生成完成，展开显示
+                    _uiState.update { state ->
+                        val updatedItems = state.plantItems.map { item ->
+                            if (item.id == plantId) {
+                                item.copy(
+                                    isGenerating = false,
+                                    isGenerated = true,
+                                    isExpanded = true,
+                                    jsonCode = jsonCode  // 更新为服务器返回的兑换码
+                                )
+                            } else item
+                        }
+                        state.copy(plantItems = updatedItems)
+                    }
+                    Log.d(TAG, "植物 '$plantId' 兑换码生成完成")
+                }.onFailure { e ->
+                    // 生成失败
+                    _uiState.update { state ->
+                        val updatedItems = state.plantItems.map { item ->
+                            if (item.id == plantId) {
+                                item.copy(isGenerating = false)
+                            } else item
+                        }
+                        state.copy(
+                            plantItems = updatedItems,
+                            errorMessage = e.message
                         )
-                    } else item
+                    }
+                    Log.e(TAG, "植物 '$plantId' 兑换码生成失败", e)
                 }
-                state.copy(plantItems = updatedItems)
+            } catch (e: Exception) {
+                // 异常处理
+                _uiState.update { state ->
+                    val updatedItems = state.plantItems.map { item ->
+                        if (item.id == plantId) {
+                            item.copy(isGenerating = false)
+                        } else item
+                    }
+                    state.copy(
+                        plantItems = updatedItems,
+                        errorMessage = "生成失败: ${e.message}"
+                    )
+                }
+                Log.e(TAG, "生成兑换码异常", e)
             }
-            
-            Log.d(TAG, "植物 '$plantId' 兑换码生成完成")
         }
     }
     
@@ -181,18 +220,27 @@ class SimpleLevelViewModel(application: Application) : AndroidViewModel(applicat
         searchJob = viewModelScope.launch {
             delay(300)
             
-            val levels = cachedLevels ?: emptyList()
-            val results = levels.filter { it.name.contains(query, ignoreCase = true) }
+            // 调用接口获取模糊搜索建议
+            val result = dataSource.getSuggestions(query)
             
-            val plantItems = results.map { level ->
-                PlantItem(
-                    id = level.name,
-                    name = level.name,
-                    jsonCode = level.jsonCode
-                )
+            result.onSuccess { suggestions ->
+                val plantItems = suggestions.map { name ->
+                    PlantItem(
+                        id = name,
+                        name = name,
+                        jsonCode = ""  // 暂时为空
+                    )
+                }
+                
+                _uiState.update { it.copy(plantItems = plantItems, matchedCount = 0) }
+            }.onFailure { e ->
+                Log.e(TAG, "搜索失败", e)
+                _uiState.update { it.copy(
+                    plantItems = emptyList(),
+                    matchedCount = 0,
+                    errorMessage = e.message
+                ) }
             }
-            
-            _uiState.update { it.copy(plantItems = plantItems, matchedCount = 0) }
         }
     }
     
@@ -204,7 +252,7 @@ class SimpleLevelViewModel(application: Application) : AndroidViewModel(applicat
     }
     
     /**
-     * 开始生成礼包（带动画效果）
+     * 开始生成礼包（从服务器查询）
      */
     fun startGeneration() {
         val query = _uiState.value.generatorQuery
@@ -225,10 +273,19 @@ class SimpleLevelViewModel(application: Application) : AndroidViewModel(applicat
                     _uiState.update { it.copy(generationProgress = i * 0.1f) }
                 }
                 
-                // 查找匹配结果
-                val levels = cachedLevels ?: emptyList()
-                val results = levels.filter { it.name.contains(query, ignoreCase = true) }
-                val matchedCount = results.size
+                // 调用接口获取模糊搜索建议
+                val suggestionsResult = dataSource.getSuggestions(query)
+                
+                if (suggestionsResult.isFailure) {
+                    _uiState.update { it.copy(
+                        isGenerating = false,
+                        errorMessage = suggestionsResult.exceptionOrNull()?.message
+                    ) }
+                    return@launch
+                }
+                
+                val suggestions = suggestionsResult.getOrNull() ?: emptyList()
+                val matchedCount = suggestions.size
                 val expectedPackages = if (matchedCount > 0) 1 else 0
                 
                 _uiState.update { it.copy(
@@ -236,37 +293,51 @@ class SimpleLevelViewModel(application: Application) : AndroidViewModel(applicat
                     expectedPackages = expectedPackages
                 ) }
                 
-                // 阶段2: 分析数据 (30-60%)
-                for (i in 4..6) {
-                    delay(300)
-                    _uiState.update { it.copy(generationProgress = i * 0.1f) }
+                // 阶段2: 从服务器查询兑换码 (30-90%)
+                val generatorResults = mutableListOf<PlantItem>()
+                suggestions.forEachIndexed { index, name ->
+                    // 更新进度
+                    val progress = 0.3f + (index.toFloat() / suggestions.size) * 0.6f
+                    _uiState.update { it.copy(generationProgress = progress) }
+                    
+                    // 查询兑换码
+                    val result = dataSource.searchCodeFromServer(name)
+                    result.onSuccess { jsonCode ->
+                        generatorResults.add(
+                            PlantItem(
+                                id = name,
+                                name = name,
+                                jsonCode = jsonCode,
+                                isGenerated = true,
+                                isExpanded = true
+                            )
+                        )
+                    }.onFailure { e ->
+                        Log.w(TAG, "查询 $name 失败: ${e.message}")
+                        // 查询失败的也添加，但标记为未生成
+                        generatorResults.add(
+                            PlantItem(
+                                id = name,
+                                name = name,
+                                jsonCode = "查询失败: ${e.message}",
+                                isGenerated = false,
+                                isExpanded = false
+                            )
+                        )
+                    }
                 }
                 
-                // 阶段3: 生成礼包 (60-100%)
-                for (i in 7..10) {
-                    delay(250)
+                // 阶段3: 完成 (90-100%)
+                for (i in 9..10) {
+                    delay(100)
                     _uiState.update { it.copy(generationProgress = i * 0.1f) }
-                }
-                
-                // 生成完成
-                delay(300)
-                
-                // 转换为植物项并显示结果
-                val generatorResults = results.map { level ->
-                    PlantItem(
-                        id = level.name,
-                        name = level.name,
-                        jsonCode = level.jsonCode,
-                        isGenerated = true,
-                        isExpanded = true  // 默认展开
-                    )
                 }
                 
                 _uiState.update { it.copy(
                     isGenerating = false,
-                    plantItems = emptyList(),  // 清空搜索提示列表
-                    generatorResults = generatorResults,  // 专门用于生成器结果
-                    selectedPlantId = null  // 清除选中状态
+                    plantItems = emptyList(),
+                    generatorResults = generatorResults,
+                    selectedPlantId = null
                 ) }
                 
                 Log.d(TAG, "生成器: 搜索 '$query'，找到 ${generatorResults.size} 个结果")
